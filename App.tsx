@@ -8,14 +8,16 @@ import {
   TouchableOpacity,
   Keyboard,
   ScrollView,
-  Platform
+  Platform,
 } from "react-native";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Task from "./components/Tasks";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function App() {
   const [task, setTask] = useState<string | null>("");
   const [taskItems, setTaskItems] = useState<any[]>([]);
+  const [firstStart, setFirstStart] = useState<boolean>(false);
 
   function handleAddTask() {
     Keyboard.dismiss();
@@ -23,11 +25,34 @@ export default function App() {
     setTask(null);
   }
 
-  function completeTask(index: number) {
+  async function handleStorage() {
+    await AsyncStorage.setItem("taskItems", JSON.stringify(taskItems));
+  }
+
+  async function completeTask(index: number) {
     let itemsCopy = [...taskItems];
     itemsCopy.splice(index, 1);
     setTaskItems(itemsCopy);
   }
+
+  async function loadDataOnStart() {
+    await AsyncStorage.getItem("taskItems").then((value) => {
+      if (value) {
+        setTaskItems(JSON.parse(value));
+      }
+    });
+  }
+
+  useEffect(() => {
+    if (!firstStart) {
+      loadDataOnStart();
+      setFirstStart(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    handleStorage();
+  }, [taskItems]);
 
   return (
     <View style={styles.container}>
@@ -45,13 +70,13 @@ export default function App() {
               return (
                 <TouchableOpacity
                   key={index}
-                  onPress={() => completeTask(index)}
+                  onPress={async () => await completeTask(index)}
                 >
                   <Task text={item} />
                 </TouchableOpacity>
-              )
+              );
             })}
-        </View>
+          </View>
         </View>
       </ScrollView>
 
